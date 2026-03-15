@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Arrow Position Generator</title>
+
+    <style>
+      .container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .img {
+        width: 600px;
+        height: 800px;
+        position: relative;
+        background-size: cover;
+        background-position: center;
+      }
+
+      .threeDContainer {
+        position: absolute;
+
+        /* default position */
+        bottom: 20%;
+        left: 41%;
+
+        width: 18%;
+        height: 12%;
+        perspective: 50px;
+
+        cursor: grab;
+      }
+
+      .arrow {
+        width: 100%;
+        height: 100%;
+        background: red;
+
+        clip-path: polygon(
+          50% 0%,
+          100% 60%,
+          65% 60%,
+          65% 100%,
+          35% 100%,
+          35% 60%,
+          0% 60%
+        );
+      }
+
+      .buttonContainer {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+      }
+
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      #result {
+        margin-top: 20px;
+        font-family: monospace;
+        background: #eee;
+        padding: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="container" class="container">
+      <!-- UPLOAD FEATURE ADDED -->
+      <!-- Allows selecting a local image file -->
+      <p>Upload Image:</p>
+      <input type="file" accept="image/*" onchange="loadImage(event)" />
+      <br /><br />
+      <!-- UPLOAD FEATURE END -->
+
+      <div id="img" class="img"></div>
+
+      <br />
+
+      <p>3 direction test:</p>
+
+      <div class="buttonContainer">
+        <button onclick="addArrow('left')">left</button>
+        <button onclick="addArrow('straight')">straight</button>
+        <button onclick="addArrow('right')">right</button>
+      </div>
+
+      <br />
+
+      <p>3d angle adjustment test:</p>
+
+      <div class="buttonContainer">
+        <button onclick="adjustThreeDAngle(3)">Increase 3D Angle</button>
+        <button onclick="adjustThreeDAngle(-3)">Decrease 3D Angle</button>
+      </div>
+
+      <br />
+
+      <p>change arrow angle:</p>
+
+      <div class="buttonContainer">
+        <button onclick="changeArrowAngle(5)">clockwise</button>
+        <button onclick="changeArrowAngle(-5)">counterclockwise</button>
+      </div>
+
+      <br />
+
+      <button onclick="generate()">Generate JSON</button>
+
+      <pre id="result"></pre>
+    </div>
+
+    <script>
+      const img = document.getElementById("img");
+
+      img.style.backgroundImage = "url('./hallway.jpeg')";
+      img.style.backgroundSize = "cover";
+
+      let currentThreeDContainer = null;
+
+      /* UPLOAD FEATURE ADDED */
+      /* Load a local image selected from the file input */
+      function loadImage(event) {
+        const file = event.target.files[0];
+
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          img.style.backgroundImage = `url('${e.target.result}')`;
+        };
+
+        /* convert image file to base64 so browser can display it */
+        reader.readAsDataURL(file);
+
+        /* remove existing arrow when new image loads */
+        const existing = document.querySelector("#threeDContainer");
+        if (existing) existing.remove();
+      }
+      /* UPLOAD FEATURE END */
+
+      function addArrow(direction) {
+        let rotation = 0;
+        let threeDAngle = 45;
+
+        const existing = document.querySelector("#threeDContainer");
+
+        if (existing) {
+          img.removeChild(existing);
+        }
+
+        if (direction === "left") {
+          rotation = -90;
+          threeDAngle > 40
+            ? (threeDAngle = threeDAngle - 30)
+            : (threeDAngle = 14);
+        }
+        // if the 3d angle is bigger than 40, reduce it by 30, otherwise set it to 14, to avoid the arrow being too flat and hard to see ,the left and right direction have the same 3d angle, and should be smaller than the straight direction which is 45, to make the arrow look better in perspective
+        if (direction === "right") {
+          rotation = 90;
+          threeDAngle > 40
+            ? (threeDAngle = threeDAngle - 30)
+            : (threeDAngle = 14);
+        }
+
+        if (direction === "straight") {
+          rotation = 0;
+        }
+
+        const threeDContainer = document.createElement("div");
+        threeDContainer.className = "threeDContainer";
+        threeDContainer.id = "threeDContainer";
+
+        const arrow = document.createElement("div");
+        arrow.className = "arrow";
+
+        arrow.style.transform = `rotateX(${threeDAngle}deg) rotate(${rotation}deg)`;
+
+        threeDContainer.appendChild(arrow);
+
+        img.appendChild(threeDContainer);
+
+        currentThreeDContainer = threeDContainer;
+
+        enableDrag(threeDContainer);
+      }
+
+      function adjustThreeDAngle(angle) {
+        const arrow = document.querySelector(".threeDContainer .arrow");
+
+        if (arrow) {
+          const currentTransform = arrow.style.transform;
+
+          const rotateXMatch = currentTransform.match(/rotateX\(([-\d]+)deg\)/);
+          const rotateMatch = currentTransform.match(/rotate\(([-\d]+)deg\)/);
+
+          let currentRotateX = rotateXMatch ? parseInt(rotateXMatch[1]) : 0;
+          let currentRotate = rotateMatch ? parseInt(rotateMatch[1]) : 0;
+
+          currentRotateX += angle;
+
+          arrow.style.transform = `rotateX(${currentRotateX}deg) rotate(${currentRotate}deg)`;
+        }
+      }
+
+      function changeArrowAngle(angle) {
+        const arrow = document.querySelector(".threeDContainer .arrow");
+
+        if (arrow) {
+          const currentTransform = arrow.style.transform;
+
+          const rotateXMatch = currentTransform.match(/rotateX\(([-\d]+)deg\)/);
+          const rotateMatch = currentTransform.match(/rotate\(([-\d]+)deg\)/);
+
+          let currentRotateX = rotateXMatch ? parseInt(rotateXMatch[1]) : 0;
+          let currentRotate = rotateMatch ? parseInt(rotateMatch[1]) : 0;
+
+          currentRotate += angle;
+
+          arrow.style.transform = `rotateX(${currentRotateX}deg) rotate(${currentRotate}deg)`;
+        }
+      }
+
+      // mouse move event to drag the arrow
+      function enableDrag(el) {
+        let isDragging = false;
+
+        el.addEventListener("mousedown", () => {
+          isDragging = true;
+        });
+
+        document.addEventListener("mouseup", () => {
+          isDragging = false;
+        });
+
+        document.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+
+          const rect = img.getBoundingClientRect();
+
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          const leftPercent = (x / rect.width) * 100;
+          const bottomPercent = (1 - y / rect.height) * 100;
+
+          el.style.left = leftPercent + "%";
+          el.style.bottom = bottomPercent + "%";
+        });
+      }
+
+      function generate() {
+        const container = document.querySelector(".threeDContainer");
+        const arrow = document.querySelector(".arrow");
+
+        if (!container || !arrow) return;
+
+        const left = container.style.left || "41%";
+        const bottom = container.style.bottom || "20%";
+
+        const transform = arrow.style.transform;
+
+        const rotateXMatch = transform.match(/rotateX\(([-\d]+)deg\)/);
+        const rotateMatch = transform.match(/rotate\(([-\d]+)deg\)/);
+
+        const threeDAngle = rotateXMatch ? parseInt(rotateXMatch[1]) : 0;
+        const arrowAngle = rotateMatch ? parseInt(rotateMatch[1]) : 0;
+
+        const data = {
+          "position-left": left,
+          "position-bottom": bottom,
+          threeDAngle: threeDAngle,
+          arrowAngle: arrowAngle,
+        };
+
+        document.getElementById("result").textContent = JSON.stringify(
+          data,
+          null,
+          2,
+        );
+      }
+    </script>
+  </body>
+</html>
